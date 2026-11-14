@@ -1,10 +1,14 @@
-import { test, expect } from '@playwright/test';
-import { LoginPage } from '../pages/LoginPage';
+import { test, expect } from '../fixtures/pagesFixture';
 
 
-let loginPage: LoginPage;
+type ErrorCase = {
+    name: string,
+    login: string,
+    password: string,
+    errorMessage: string,
+};
 
-const errorLoginCases = [
+const errorLoginCases: ErrorCase[] = [
     {
         name: 'заблокированный пользователь',
         login: 'locked_out_user',
@@ -32,18 +36,14 @@ const errorLoginCases = [
 ];
 
 test.describe('Проверка логина', () => {
-    test.beforeEach(async ({ page }) => {
-        loginPage = new LoginPage(page);
-        await loginPage.open();
-    });
-    test('Успешный логин пользователя', async ({ page }) => {
+    test('Успешный логин пользователя', async ({ loginPage, page }) => {
         await loginPage.login('standard_user', 'secret_sauce');
         await expect.soft(page).toHaveURL('/inventory.html');
         await expect.soft(loginPage.loginTitleText).toHaveText('Products');
     });
 
     for (const errorLoginCase of errorLoginCases) {
-        test(`Неуспешный логин: ${errorLoginCase.name}`, async () => {
+        test(`Неуспешный логин: ${errorLoginCase.name}`, async ({ loginPage }) => {
             await loginPage.login(errorLoginCase.login, errorLoginCase.password);
             await expect(loginPage.errorText).toHaveText(errorLoginCase.errorMessage);
         });
