@@ -1,4 +1,5 @@
-import { test, expect, APIRequestContext } from '@playwright/test';
+import { test, expect } from '../../fixtures/apiFixture';
+import { type Booking, CreateBookingResponse } from '../../api/types';
 
 test.use({
     baseURL: 'https://restful-booker.herokuapp.com',
@@ -7,17 +8,6 @@ test.use({
 
 type BookingListItem = {
     bookingid: number;
-};
-
-type BookingDates = { checkin: string; checkout: string };
-
-type Booking = {
-    firstname: string;
-    lastname: string;
-    totalprice: number;
-    depositpaid: boolean;
-    bookingdates: BookingDates;
-    additionalneeds?: string;
 };
 
 const defaultBooking: Booking = {
@@ -29,104 +19,63 @@ const defaultBooking: Booking = {
     additionalneeds: 'Breakfast',
 };
 
-async function createBooking(request: APIRequestContext, booking: Booking = defaultBooking): Promise<number> {
-    const response = await request.post('/booking', {
-        data: booking
-    });
-
-    expect(response.status()).toBe(200);
-
-    const body = await response.json();
-
-    return body.bookingid;
-}
-
 test.describe('Бронирование через API', () => {
-    let accessToken: string;
+    test('GET /booking возвращает список бронирований', async ({ bookingApi }) => {
+        const getBookingResp = await bookingApi.getBookingList();
 
-    test.beforeAll(async ({ request }) => {
-        const authResp = await request.post('/auth', {
-            data: {
-                username: "admin",
-                password: "password123"
-            },
-        });
+        expect(getBookingResp.status()).toBe(200);
 
-
-        expect(authResp.status()).toBe(200);
-
-        const authRespBody = await authResp.json();
-
-        accessToken = authRespBody.token;
-        expect(accessToken).toEqual(expect.any(String));
-        expect(accessToken.length).toBeGreaterThan(0);
-    });
-    test('GET /booking возвращает список бронирований', async ({ request }) => {
-        const resp = await request.get('/booking');
-
-        expect(resp.status()).toBe(200);
-
-        const bookings: BookingListItem[] = await resp.json();
+        const bookings: BookingListItem[] = await getBookingResp.json();
 
         expect(Array.isArray(bookings)).toBe(true);
         expect(bookings.length).toBeGreaterThan(0);
         expect(bookings[0]).toHaveProperty('bookingid')
     });
-    test('PUT /booking изменени записи бронирования', async ({ request }) => {
-        const bookingId = await createBooking(request);
+    test('PUT /booking изменени записи бронирования', async ({ authorizedBookingApi }) => {
+        const createdBookingResp = await authorizedBookingApi.createBooking(defaultBooking);
+
+        const bookingBody: CreateBookingResponse = await createdBookingResp.json();
+
+        const bookingId = bookingBody.bookingid;
 
         const updateBooking = { ...defaultBooking, lastname: 'QA_lead' };
 
-        const putResponse = await request.put(`/booking/${bookingId}`, {
-            data: updateBooking,
-            headers: {
-                Cookie: `token=${accessToken}`
-            },
-        });
+        const putResponse = await authorizedBookingApi.updateBooking(bookingId, updateBooking);
 
         const putRespBody = await putResponse.json();
 
         expect(putResponse.status()).toBe(200);
         expect(putRespBody).toEqual(updateBooking);
     });
-    test('DELETE /booking удаление созданной записи бронирования', async ({ request }) => {
-        const bookingId = await createBooking(request);
+    test('DELETE /booking удаление созданной записи бронирования', async ({ authorizedBookingApi }) => {
+        const createdBookingResp = await authorizedBookingApi.createBooking(defaultBooking);
 
-        const deleteResp = await request.delete(`/booking/${bookingId}`, {
-            headers: {
-                Cookie: `token=${accessToken}`
-            },
-        });
+        const bookingBody: CreateBookingResponse = await createdBookingResp.json();
+
+        const bookingId = bookingBody.bookingid;
+
+        const deleteResp = await authorizedBookingApi.deleteBooking(bookingId);
 
         expect(deleteResp.status()).toBe(201);
 
-        const getAfterDelete = await request.get(`/booking/${bookingId}`);
-        expect(getAfterDelete.status()).toBe(404);
+        const getDeletedBooking = await authorizedBookingApi.getBookingById(bookingId);
+        expect(getDeletedBooking.status()).toBe(404);
     });
-    test('PUT /booking с некорректным токеном', async ({ request }) => {
-        const bookingId = await createBooking(request);
-        const updateBooking = { ...defaultBooking, lastname: 'QA_lead' };
-        const putResp = await request.put(`/booking/${bookingId}`, {
-            data: updateBooking,
-            headers: {
-                Cookie: `token=failedToken`
-            },
-        });
+    test('PUT /booking без токена', async ({ bookingApi }) => {
+        const createResp = await bookingApi.createBooking(defaultBooking);
+        const { bookingid } = await createResp.json();
+
+        const putResp = await bookingApi.updateBooking(bookingid, { ...defaultBooking, lastname: 'Hacker' });
 
         expect(putResp.status()).toBe(403);
     });
-    test('GET /booking для несуществующего id', async ({ request }) => {
-        const getResp = await request.get('/booking/999999999');
+    test('GET /booking для несуществующего id', async ({ bookingApi }) => {
+        const getResp = await bookingApi.getBookingById(999999);
 
         expect(getResp.status()).toBe(404);
     });
-    test('POST /auth с неверной авторизацией', async ({ request }) => {
-        const authResp = await request.post('/auth', {
-            data: {
-                username: "admin",
-                password: "password"
-            },
-        });
+    test('POST /auth с неверной авторизацией', async ({ bookingApi }) => {
+        const authResp = await bookingApi.auth('admin', 'password');
 
         const authRespBody = await authResp.json();
         expect(authResp.status()).toBe(200);
