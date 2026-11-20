@@ -36,4 +36,8 @@ export class BookingApi {
     async deleteBooking(id: number): Promise<APIResponse> {
         return await this.request.delete(`/booking/${id}`, { headers: this.getAuthHeader() });
     };
+
+    setCustomerToken(token: string): void {
+        this.token = token;
+    }
 }
