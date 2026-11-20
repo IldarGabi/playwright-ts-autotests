@@ -14,3 +14,7 @@ export type CreateBookingResponse = {
     bookingid: number;
     booking: Booking;
 };
+
+export type BookingListItem = {
+    bookingid: number;
+};
