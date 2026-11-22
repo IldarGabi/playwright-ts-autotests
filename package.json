@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "test": "playwright test",
-    "test:ui": "playwright test --ignore-snapshots tests/login.spec.ts tests/inventory.spec.ts tests/mock.spec.ts",
+    "test:ui": "playwright test tests/login.spec.ts tests/inventory.spec.ts tests/mock.spec.ts",
     "test:api": "playwright test tests/api",
     "report": "playwright show-report",
     "allure": "allure generate allure-results -o allure-report && allure open allure-report"
