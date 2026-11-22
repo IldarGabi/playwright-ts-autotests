@@ -1,71 +1,59 @@
 import { test, expect } from '../../fixtures/apiFixture';
-import { type Booking, CreateBookingResponse, BookingListItem } from '../../api/types';
+import { type Booking, BookingListItem } from '../../api/types';
+import { defaultBooking } from '../../api/testData';
+
 
 test.use({
     baseURL: 'https://restful-booker.herokuapp.com',
     extraHTTPHeaders: { Accept: 'application/json' },
 });
 
-const defaultBooking: Booking = {
-    firstname: 'Ildar',
-    lastname: 'Tester',
-    totalprice: 150,
-    depositpaid: true,
-    bookingdates: { checkin: '2026-12-01', checkout: '2026-12-05' },
-    additionalneeds: 'Breakfast',
-};
-
 test.describe('Бронирование через API', () => {
     test('GET /booking возвращает список бронирований', async ({ bookingApi }) => {
         const getBookingResp = await bookingApi.getBookingList();
 
+        expect(getBookingResp.status()).toBe(200);
+
         const bookings: BookingListItem[] = await getBookingResp.json();
 
-        expect(getBookingResp.status()).toBe(200);
         expect(Array.isArray(bookings)).toBe(true);
         expect(bookings.length).toBeGreaterThan(0);
         expect(bookings[0]).toHaveProperty('bookingid')
     });
-    test('PUT /booking изменение записи бронирования', async ({ authorizedBookingApi }) => {
-        const createdBookingResp = await authorizedBookingApi.createBooking(defaultBooking);
+    test('GET /booking/{id} возвращает созданное бронирование', async ({ bookingApi, createdBooking }) => {
+        const response = await bookingApi.getBookingById(createdBooking.bookingid);
 
-        const bookingBody: CreateBookingResponse = await createdBookingResp.json();
+        expect(response.status()).toBe(200);
 
-        const bookingId = bookingBody.bookingid;
+        const body: Booking = await response.json();
 
-        const updateBooking = { ...defaultBooking, lastname: 'QA_lead' };
+        expect(body).toEqual(defaultBooking);
+    });
+    test('PUT /booking изменение записи бронирования', async ({ authorizedBookingApi, createdBooking }) => {
+        const updateBooking: Booking = { ...defaultBooking, lastname: 'QA_lead' };
 
-        const putResponse = await authorizedBookingApi.updateBooking(bookingId, updateBooking);
+        const putResponse = await authorizedBookingApi.updateBooking(createdBooking.bookingid, updateBooking);
+
+        expect(putResponse.status()).toBe(200)
 
         const putRespBody: Booking = await putResponse.json();
 
-        expect(createdBookingResp.ok()).toBeTruthy();
-        expect(putResponse.status()).toBe(200);
         expect(putRespBody).toEqual(updateBooking);
     });
-    test('DELETE /booking удаление созданной записи бронирования', async ({ authorizedBookingApi }) => {
-        const createdBookingResp = await authorizedBookingApi.createBooking(defaultBooking);
-
-        const bookingBody: CreateBookingResponse = await createdBookingResp.json();
-
-        const bookingId = bookingBody.bookingid;
+    test('DELETE /booking удаление созданной записи бронирования', async ({ authorizedBookingApi, createdBooking }) => {
+        const bookingId = createdBooking.bookingid;
 
         const deleteResp = await authorizedBookingApi.deleteBooking(bookingId);
 
         const getDeletedBooking = await authorizedBookingApi.getBookingById(bookingId);
 
-        expect(createdBookingResp.ok()).toBeTruthy();
         expect(deleteResp.status()).toBe(201);
         expect(getDeletedBooking.status()).toBe(404);
     });
-    test('PUT /booking без токена', async ({ bookingApi }) => {
-        const createdBookingResp = await bookingApi.createBooking(defaultBooking);
-        const { bookingid } = await createdBookingResp.json();
+    test('PUT /booking без токена', async ({ bookingApi, createdBooking }) => {
+        const putResponse = await bookingApi.updateBooking(createdBooking.bookingid, { ...defaultBooking, lastname: 'Hacker' });
 
-        const putResp = await bookingApi.updateBooking(bookingid, { ...defaultBooking, lastname: 'Hacker' });
-
-        expect(createdBookingResp.ok()).toBeTruthy();
-        expect(putResp.status()).toBe(403);
+        expect(putResponse.status()).toBe(403);
     });
     test('GET /booking для несуществующего id', async ({ bookingApi }) => {
         const getResp = await bookingApi.getBookingById(999999);
@@ -75,25 +63,17 @@ test.describe('Бронирование через API', () => {
     test('POST /auth с неверной авторизацией', async ({ bookingApi }) => {
         const authResp = await bookingApi.auth('admin', 'password');
 
+        expect(authResp.status()).toBe(200);
+
         const authRespBody = await authResp.json();
 
-        expect(authResp.status()).toBe(200);
         expect(authRespBody.reason).toBe('Bad credentials');
     });
-    test('PUT с невалидным токеном авторизации', async ({ authorizedBookingApi }) => {
-        const createdBookingResp = await authorizedBookingApi.createBooking(defaultBooking);
+    test('PUT с невалидным токеном авторизации', async ({ bookingApi, createdBooking }) => {
+        bookingApi.setCustomerToken('invalid-token');
 
-        const bookingBody: CreateBookingResponse = await createdBookingResp.json();
+        const putResponse = await bookingApi.updateBooking(createdBooking.bookingid, { ...defaultBooking, lastname: 'QA_lead' });
 
-        const bookingId = bookingBody.bookingid;
-
-        authorizedBookingApi.setCustomerToken('invalid-token');
-
-        const updateBooking = { ...defaultBooking, lastname: 'QA_lead' };
-
-        const putResponse = await authorizedBookingApi.updateBooking(bookingId, updateBooking);
-
-        expect(createdBookingResp.ok()).toBeTruthy();
         expect(putResponse.status()).toBe(403);
-    })
+    });
 });
