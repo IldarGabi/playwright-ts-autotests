@@ -13,6 +13,9 @@ export class InventoryPage {
         this.cartBadge = page.locator('[data-test="shopping-cart-badge"]');
     }
 
+    async open() {
+        await this.page.goto('/inventory.html');
+    }
     async addItems(productIds: string[]) {
         for (const productId of productIds) {
             await this.page.locator(`[data-test="add-to-cart-${productId}"]`).click();

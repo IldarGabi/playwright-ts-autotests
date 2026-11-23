@@ -1,5 +1,7 @@
 import { test, expect } from '../fixtures/pagesFixture';
 
+test.use({ storageState: 'playwright/.auth/user.json' });
+
 type ItemList = string[];
 
 const productIdstForAdd: ItemList = [
@@ -11,8 +13,8 @@ const productIdsForRemove: ItemList = [
 ];
 
 test.describe('Проверка добавления и удаление товаров в корзину', () => {
-    test.beforeEach(async ({ loginPage, inventoryPage }) => {
-        await loginPage.login('standard_user', 'secret_sauce');
+    test.beforeEach(async ({ inventoryPage }) => {
+        await inventoryPage.open();
         await inventoryPage.addItems(productIdstForAdd);
     });
     test('Добавлено 2 товара в корзину', async ({ inventoryPage }) => {
