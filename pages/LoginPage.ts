@@ -6,7 +6,6 @@ export class LoginPage {
     readonly passwordInput: Locator;
     readonly loginBtn: Locator;
     readonly errorText: Locator;
-    readonly loginTitleText: Locator;
 
     constructor(page: Page) {
         this.page = page;
@@ -14,7 +13,6 @@ export class LoginPage {
         this.passwordInput = page.locator('[data-test="password"]');
         this.loginBtn = page.locator('[data-test="login-button"]');
         this.errorText = page.locator('[data-test="error"]');
-        this.loginTitleText = page.locator('[data-test="title"]');
     }
 
     async open() {

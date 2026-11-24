@@ -16,6 +16,7 @@ export class InventoryPage {
     async open() {
         await this.page.goto('/inventory.html');
     }
+
     async addItems(productIds: string[]) {
         for (const productId of productIds) {
             await this.page.locator(`[data-test="add-to-cart-${productId}"]`).click();

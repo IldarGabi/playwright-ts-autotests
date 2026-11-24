@@ -36,10 +36,10 @@ const errorLoginCases: ErrorCase[] = [
 ];
 
 test.describe('Проверка логина', () => {
-    test('Успешный логин пользователя', async ({ loginPage, page }) => {
+    test('Успешный логин пользователя', async ({ loginPage, inventoryPage, page }) => {
         await loginPage.login('standard_user', 'secret_sauce');
         await expect.soft(page).toHaveURL('/inventory.html');
-        await expect.soft(loginPage.loginTitleText).toHaveText('Products');
+        await expect.soft(inventoryPage.title).toHaveText('Products');
     });
 
     for (const errorLoginCase of errorLoginCases) {
